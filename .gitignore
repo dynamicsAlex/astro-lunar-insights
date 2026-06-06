@@ -1,0 +1,15 @@
+# Generated binaries (copied from .dat at runtime)
+scripts/segoeuisl.ttf
+scripts/seguisym.ttf
+scripts/swisseph.cp314-win_amd64.pyd
+
+# Python cache
+scripts/__pycache__/
+__pycache__/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temp files
+*.tmp
