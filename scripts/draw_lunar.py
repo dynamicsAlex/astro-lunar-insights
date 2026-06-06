@@ -245,8 +245,8 @@ def draw_wheel(img, dw, cx, cy, RO, RS, RH, RP, RI, natal_data, transit_moon_lon
         rcent(dw, int(tm_px), int(tm_py) + 28, tm_label, 15, (255, 255, 220))
 
     # ── Title above wheel ──
-    title_y = cy - RO - 50
-    rcent(dw, cx, title_y, title, 28, (255, 220, 100))
+    title_y = cy - RO - 80
+    rcent(dw, cx, title_y, title, 22, (255, 220, 100))
 
     # ── Legend below wheel: 3 groups side by side ──
     LEG_TOP = cy + RO + 12
@@ -317,83 +317,144 @@ def draw_wheel(img, dw, cx, cy, RO, RS, RH, RP, RI, natal_data, transit_moon_lon
 
 # ── Text panel ──
 def draw_text_panel(img, dw, x0, y0, w, h, data, lang):
-    """Draw the right-side text interpretation panel."""
+    """Draw the right-side text interpretation panel with colored planet names and aspect types."""
     R = (lang == 'ru')
 
     # Background
     dw.rectangle((x0, y0, x0 + w, y0 + h), fill=(10, 10, 22), outline=(60, 60, 100), width=2)
 
     x = x0 + 20
-    y = y0 + 15
-    max_w = w - 40
-    lh = 26
-    smh = 20
+    _y = [y0 + 15]
+    max_w = w // 2 - 20  # half width for faster wrapping
 
-    def text(line, sz=17, color=(220, 220, 240)):
-        nonlocal y
-        rtext(dw, x, y, line, sz, color)
-        y += lh
+    # Font sizes matching natal chart: FS=19, FM=22, FL=26, LH=22
+    FS = 19  # body text
+    FM = 22  # medium (subheads)
+    FL = 26  # large (main header)
+    LH = 22  # line height
 
-    def small(line, color=(180, 180, 200)):
-        nonlocal y
-        rtext(dw, x, y, line, 14, color)
-        y += smh
+    # Planet color mapping (Russian/English names -> RGB)
+    PLANET_COLORS = {}
+    for _pn, (_ab, _cl, _nr, _ne) in PM.items():
+        PLANET_COLORS[_nr] = _cl
+        PLANET_COLORS[_ne] = _cl
 
-    def header(line, color=(255, 220, 100)):
-        nonlocal y
-        rtext(dw, x, y, line, 22, color)
-        y += lh + 6
+    # Aspect color mapping (lowercase name -> RGB)
+    ASP_COLORS_LOCAL = {}
+    for _an, _ac in ASP_COLORS.items():
+        ASP_COLORS_LOCAL[_an.lower()] = _ac
+        ASP_COLORS_LOCAL[_an] = _ac
 
-    def subhead(line, color=(180, 200, 255)):
-        nonlocal y
-        rtext(dw, x, y, line, 17, color)
-        y += lh + 3
+    def _get_word_color(word):
+        c = PLANET_COLORS.get(word)
+        if c:
+            return c
+        return ASP_COLORS_LOCAL.get(word.lower())
 
-    def wrapped(line, sz=14, color=(200, 200, 220)):
-        nonlocal y
-        words = line.split()
+    def _adv(n=1):
+        _y[0] += n
+
+    def _draw_colored_line(text, size, default_color):
+        """Draw a single line with per-word color coding."""
+        sf = fnt(size, sym=True)
+        tf = fnt(size, sym=False)
+        words = text.split()
+        cx = x
+        space_w = ch_w(' ', tf)
+        for i, wd in enumerate(words):
+            wc = _get_word_color(wd) or default_color
+            stripped = wd.strip('.,;:!?')
+            if stripped != wd:
+                wc2 = _get_word_color(stripped) or default_color
+            else:
+                wc2 = wc
+            for ch in wd:
+                f = sf if is_z(ch) else tf
+                dw.text((cx, _y[0]), ch, fill=wc2, font=f)
+                cx += ch_w(ch, f)
+            if i < len(words) - 1:
+                dw.text((cx, _y[0]), ' ', fill=default_color, font=tf)
+                cx += space_w
+        _adv(LH)
+
+    def _wrap_multiline(line_text, size, max_width, default_color):
+        """Word-wrap a long line, then draw each wrapped line."""
+        tf = fnt(size, sym=False)
+        words = line_text.split()
         cur = ""
         for wd in words:
-            test = (cur + " " + wd).strip()
-            bb = fnt(sz).getbbox(test)
-            tw = (bb[2] - bb[0]) if bb else 0
-            if tw <= max_w:
-                cur = test
+            if cur:
+                test_bb = tf.getbbox(cur + " " + wd)
+                tw = (test_bb[2] - test_bb[0]) if test_bb else 0
+                if tw <= max_width:
+                    cur = cur + " " + wd
+                    continue
+                _draw_colored_line(cur, size, default_color)
+                cur = wd
             else:
-                if cur:
-                    rtext(dw, x, y, cur, sz, color)
-                    y += smh
                 cur = wd
         if cur:
-            rtext(dw, x, y, cur, sz, color)
-            y += smh
+            _draw_colored_line(cur, size, default_color)
 
-    def spacer(s=10):
-        nonlocal y
-        y += s
+    def text(line, sz=FS, color=(220, 220, 240)):
+        _wrap_multiline(line, sz, max_w, color)
+
+    def small(line, color=(180, 180, 200)):
+        _wrap_multiline(line, FS - 5, max_w, color)
+
+    def header(line, color=(255, 220, 100)):
+        _wrap_multiline(line, FL, max_w, color)
+        _adv(6)
+
+    def subhead(line, color=(180, 200, 255)):
+        _wrap_multiline(line, FM, max_w, color)
+        _adv(3)
+
+    def wrapped(line, sz=FS, color=(200, 200, 220)):
+        _wrap_multiline(line, sz, max_w, color)
+
+    def spacer(s=8):
+        _adv(s)
 
     def check(needed):
-        return y + needed < y0 + h - 20
+        return _y[0] + needed < y0 + h - 20
 
     # ── Helper: extract interpretation text from conclusion[mkey] ──
     conclusion_data = data.get('conclusion', {})
     is_ai = 'overall' in conclusion_data
 
     def interp_text(mkey):
-        """Extract interpretation string from conclusion[mkey].interpretation.
-        Handles dict, tuple/list, and string formats (autonomous + AI)."""
-        m = conclusion_data.get(mkey, {})
-        raw = m.get('interpretation', '')
+        val = conclusion_data.get(mkey)
+        if isinstance(val, str):
+            return val
+        if isinstance(val, list):
+            # For transit_moon_aspects list: build readable summary
+            if mkey == 'transit_moon_aspects' and len(val) > 0 and isinstance(val[0], dict):
+                parts = []
+                for a in val:
+                    asp = a.get('aspect', '?')
+                    nat = a.get('natal', '?')
+                    orb = a.get('orb', 0)
+                    retro = ' R' if a.get('natal_retro') else ''
+                    parts.append('Moon {asp} {nat} (orb {orb:.1f}\u00b0){retro}'.format(asp=asp, nat=nat, orb=orb, retro=retro))
+                return ', '.join(parts)
+            return ' '.join(str(x) for x in val)
+        if not isinstance(val, dict):
+            return ''
+        raw = val.get('interpretation', '')
         if not raw:
             return ''
         if isinstance(raw, dict):
+            if 'interpretation' in raw:
+                return str(raw['interpretation'])
             return raw.get('description', str(raw))
-        elif isinstance(raw, (tuple, list)) and len(raw) >= 2:
-            return f"{raw[0]}: {raw[1]}"
+        elif isinstance(raw, (tuple, list)):
+            if len(raw) >= 2 and all(isinstance(x, str) for x in raw[:2]):
+                return f"{raw[0]}: {raw[1]}"
+            return ' '.join(str(x) for x in raw)
         return str(raw)
 
     def show_interp(mkey, limit=None):
-        """Show interpreted text for metric mkey if available."""
         txt = interp_text(mkey)
         if not txt:
             return
@@ -402,91 +463,125 @@ def draw_text_panel(img, dw, x0, y0, w, h, data, lang):
         else:
             wrapped(txt[:limit] if limit else txt)
 
+    # ── Titles / Labels
+    if R:
+        T1 = '\u0424\u0410\u0417\u0410 \u041b\u0423\u041d\u042b'
+        T2 = '\u0411\u041b\u0418\u0416\u0410\u0419\u0428\u0418\u0415 \u0424\u0410\u0417\u042b'
+        T3 = '\u041b\u0423\u041d\u041d\u042b\u0419 \u0414\u0415\u041d\u042c'
+        T4 = '\u041b\u0423\u041d\u0410 \u041a \u041d\u0410\u0422\u0410\u041b\u042c\u041d\u041e\u0419'
+        T5 = '\u041f\u0415\u0420\u0421\u041e\u041d\u0410\u041b\u042c\u041d\u0410\u042f \u0424\u0410\u0417\u0410'
+        T6 = '\u041b\u0423\u041d\u0410 \u0412 \u0414\u041e\u041c\u0415'
+        T7 = '\u0421\u041a\u041e\u0420\u041e\u0421\u0422\u042c \u041b\u0423\u041d\u042b'
+        T8 = '\u0410\u0421\u041f\u0415\u041a\u0422\u042b'
+        T9 = '\u0417\u0410\u041a\u041b\u042e\u0427\u0415\u041d\u0418\u0415'
+        TP = '\u041f\u043b\u0430\u043d\u0435\u0442\u044b'
+        TE = '\u042d\u043d\u0435\u0440\u0433\u0438\u044f'
+        TI = '\u0418\u043d\u0442\u0435\u043d\u0441\u0438\u0432\u043d\u043e\u0441\u0442\u044c'
+        TD = '\u0434\u0435\u043d\u044c'
+        dir_in = '\u0447\u0435\u0440\u0435\u0437'
+        dir_ago = '\u043d\u0430\u0437\u0430\u0434'
+    else:
+        T1 = 'MOON PHASE'
+        T2 = 'NEAREST PHASES'
+        T3 = 'LUNAR DAY'
+        T4 = 'MOON TO NATAL MOON'
+        T5 = 'PERSONAL PHASE'
+        T6 = 'MOON IN HOUSE'
+        T7 = 'MOON SPEED'
+        T8 = 'ASPECTS'
+        T9 = 'CONCLUSION'
+        TP = 'Planets'
+        TE = 'Energy'
+        TI = 'Intensity'
+        TD = 'day'
+        dir_in = 'in'
+        dir_ago = 'ago'
+
     # Title
     name = data.get('name', '')
-    title = f"ЛУННЫЙ АНАЛИЗ: {name}" if R else f"LUNAR ANALYSIS: {name}"
+    title = ('\u041b\u0423\u041d\u041d\u042b\u0419 \u0410\u041d\u0410\u041b\u0418\u0417: ' + name) if R else ('LUNAR ANALYSIS: ' + name)
     header(title)
-    small(f"{data.get('birth_date', '')} {data.get('birth_time', '')} | {data.get('target_date', '')}")
+    small(data.get('birth_date', '') + ' ' + data.get('birth_time', '') + ' | ' + data.get('target_date', ''))
     if conclusion_data.get('_autonomous'):
-        small("Автономная интерпретация" if R else "Autonomous interpretation")
+        small('\u0410\u0432\u0442\u043e\u043d\u043e\u043c\u043d\u0430\u044f \u0438\u043d\u0442\u0435\u0440\u043f\u0440\u0435\u0442\u0430\u0446\u0438\u044f' if R else 'Autonomous interpretation')
     elif is_ai:
-        small("AI интерпретация" if R else "AI interpretation")
+        small('AI \u0438\u043d\u0442\u0435\u0440\u043f\u0440\u0435\u0442\u0430\u0446\u0438\u044f' if R else 'AI interpretation')
     spacer()
 
     # 1. Moon phase
     mp = data['moon_phase']
-    subhead("1. " + ("ФАЗА ЛУНЫ" if R else "MOON PHASE"))
-    text(f"{mp['name']} | {mp['elongation']:.1f}° | {mp['illumination']:.1f}%")
+    subhead('1. ' + T1)
+    text('{nm} | {el}\u00b0 | {il}%'.format(nm=mp['name'], el=format(mp['elongation'], '.1f'), il=format(mp['illumination'], '.1f')))
     show_interp('moon_phase', limit=400)
     spacer()
 
     # 2. Nearest phases
-    subhead("2. " + ("БЛИЖАЙШИЕ ФАЗЫ" if R else "NEAREST PHASES"))
+    subhead('2. ' + T2)
     for pn, pd in data['nearest_phases'].items():
-        direction = ("через" if R else "in") if pd['days_diff'] > 0 else ("назад" if R else "ago")
-        small(f"{pn}: {pd['date']} ({abs(pd['days_diff']):.1f}d {direction})")
+        dd = pd['days_diff']
+        direction = dir_in if dd > 0 else dir_ago
+        small(pn + ': ' + pd['date'] + ' (' + format(abs(dd), '.1f') + 'd ' + direction + ')')
     show_interp('nearest_phases', limit=200)
     spacer()
 
     # 3. Lunar day
     ld = data['lunar_day']
-    subhead("3. " + ("ЛУННЫЙ ДЕНЬ" if R else "LUNAR DAY") + f" {ld['number']}/30")
+    subhead('3. ' + T3 + ' ' + str(ld['number']) + '/30')
     show_interp('lunar_day', limit=200)
     spacer()
 
     # 4. Transit Moon -> Natal Moon
     tm = data['transit_moon_to_natal_moon']
-    subhead("4. " + ("ЛУНА К НАТАЛЬНОЙ" if R else "MOON TO NATAL MOON"))
+    subhead('4. ' + T4)
     if tm['aspect']:
-        text(f"{tm['aspect']} (orb {tm['orb']}°')")
+        text(tm['aspect'] + ' (orb ' + str(tm['orb']) + '\u00b0)')
     show_interp('transit_moon_to_natal_moon', limit=400)
     spacer()
 
     # 5. Personal phase
     pp = data['personal_phase']
-    subhead("5. " + ("ПЕРСОНАЛЬНАЯ ФАЗА" if R else "PERSONAL PHASE"))
-    text(f"{pp['elongation']:.1f}°")
+    subhead('5. ' + T5)
+    text(format(pp['elongation'], '.1f') + '\u00b0')
     show_interp('personal_phase', limit=400)
     spacer()
 
     # 6. Transit Moon house
     mh = data['transit_moon_house']
-    subhead("6. " + ("ЛУНА В ДОМЕ" if R else "MOON IN HOUSE") + f" {mh['house']}")
+    subhead('6. ' + T6 + ' ' + str(mh['house']))
     show_interp('transit_moon_house', limit=400)
     if mh['natal_planets_in_house']:
-        pnames = ", ".join([p['name'] for p in mh['natal_planets_in_house']])
-        small(("Планеты: " if R else "Planets: ") + pnames)
+        pnames = ', '.join([p['name'] for p in mh['natal_planets_in_house']])
+        small(TP + ': ' + pnames)
     spacer()
 
     # 7. Moon speed
     ms = data['moon_speed']
-    subhead("7. " + ("СКОРОСТЬ ЛУНЫ" if R else "MOON SPEED"))
-    text(f"{ms['speed']:.2f}°/" + ("день" if R else "day"))
+    subhead('7. ' + T7)
+    text(format(ms['speed'], '.2f') + '\u00b0/' + TD)
     show_interp('moon_speed', limit=200)
     spacer()
 
     # 8. Aspects
-    subhead("8. " + ("АСПЕКТЫ" if R else "ASPECTS"))
+    subhead('8. ' + T8)
     for a in data['transit_moon_aspects'][:12]:
         if not check(20):
             break
-        marker = "*" if a['major'] else " "
-        retro = " R" if a['natal_retro'] else ""
-        small(f"  {marker} Moon {a['aspect']:15s} {a['natal']:8s} (orb {a['orb']:.1f}°){retro}")
+        marker = '*' if a['major'] else ' '
+        retro = ' R' if a['natal_retro'] else ''
+        small('  ' + marker + ' Moon ' + a['aspect'].ljust(15) + ' ' + a['natal'].ljust(8) + ' (orb ' + format(a['orb'], '.1f') + '\u00b0)' + retro)
     show_interp('transit_moon_aspects', limit=400)
     spacer()
 
-    # 9. Conclusion — overall summary only
-    if 'conclusion' in data and (check(60) or is_ai):
+    # 9. Conclusion — ALWAYS show
+    if 'conclusion' in data:
         spacer()
-        subhead("9. " + ("ЗАКЛЮЧЕНИЕ" if R else "CONCLUSION"))
+        subhead('9. ' + T9)
         conclusion = data['conclusion']
         if conclusion.get('_autonomous'):
             summary = conclusion.get('summary', {})
-            wrapped(("Энергия: " if R else "Energy: ") + summary.get('cycle_energy', ''))
-            wrapped(("Интенсивность: " if R else "Intensity: ") + summary.get('intensity', ''))
+            wrapped(TE + ': ' + summary.get('cycle_energy', ''))
+            wrapped(TI + ': ' + summary.get('intensity', ''))
         elif is_ai:
-            # AI conclusion: only the overall summary text
             wrapped(conclusion['overall'])
 
 # ── Draw simple moon phase wheel (original style) ──
@@ -551,9 +646,9 @@ def draw_phase_wheel(img, dw, cx, cy, RO, elongation, illumination, fonts, lang)
     # Center illumination
     rcent(dw, cx, cy, f"{illumination:.0f}%", 32, (255, 255, 220))
 
-    # Title above wheel
+    # Title above wheel — raised higher
     title = "ФАЗА ЛУНЫ" if R else "MOON PHASE"
-    rcent(dw, cx, cy - RO - 45, title, 26, (255, 220, 100))
+    rcent(dw, cx, cy - RO - 80, title, 22, (255, 220, 100))
 
     # No legend for phase wheel — it's self-explanatory
     # (phase circle with illumination % in center)

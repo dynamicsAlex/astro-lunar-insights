@@ -1,6 +1,6 @@
 ---
 name: astro-lunar-insights
-version: 1.0.2
+version: 1.1.0
 description: Lunar phase analysis and Moon influence on a person using Swiss Ephemeris (pyswisseph). Calculates Moon phases (exact dates), transit Moon aspects to natal Moon (personal lunar cycle), transit Moon through natal houses, personal solar-lunar phase (Moon -> Natal Sun), lunar day number (tithi), Moon speed, illumination, perigee/apogee, and transit Moon aspects to all natal planets. Bilingual (RU/EN). Renders a 2-wheel chart (Moon phase wheel + natal wheel with transit Moon) with 3-group legend and text panel. Windows 10/11 compatible. Accuracy ensured by Swiss Ephemeris (JPL DE431 ephemerides, ~0.003° precision). Requires: Python 3.14.x, Pillow 12.x, MSVC++ Redist 2015–2022. Related: astro-daily-transits skill for daily transit forecast, astro-natal-chart skill for natal chart calculation.
 metadata:
   openclaw:
@@ -396,6 +396,18 @@ This is an entertainment/educational tool, not a scientific method. Do not make 
 - Updated SKILL.md with encoding guide, new CLI args, and updated layout diagram
 
 ### v1.0.0 (2026-06-05)
+
+### v1.1.0 (2026-06-06)
+- **Cosmetic overhaul of text panel:** Font sizes now match astro-natal-chart (FS=19, FM=22, FL=26, LH=22)
+- **Text wrapping improved:** Line width reduced to half (`max_w = w // 2 - 20`) for 2x faster line breaks
+- **Section headers raised:** Title labels above both wheels moved up (80px from wheel edge) for better visual balance
+- **Colored planet names in text:** Planet names in interpretation text are now rendered in their astrological colors (e.g., Марс in red, Венера in green, Уран in cyan)
+- **Colored aspect type names:** Aspect type names (Square, Trine, Sextile, Quincunx, etc.) in text are colored to match the legend
+- **Section 9 (Conclusion) always visible:** Now displays for both AI mode (`overall` text) and autonomous mode (`summary.cycle_energy` + `summary.intensity`)
+- **Fixed aspect list rendering:** Transit Moon aspects in section 8 now show readable text instead of raw dict representation
+- **Fixed `interp_text()` robustness:** Now handles all conclusion data formats — string, list, dict with `description`, dict with `interpretation` key, tuple
+- **Fixed nested function scope:** Replaced `nonlocal y` pattern with mutable list `_y = [y]` to avoid UnboundLocalError in nested drawing functions
+- **Backup files preserved:** `draw_lunar.py.bak` and `draw_lunar.py.bak2` kept for rollback
 
 ### v1.0.2 (2026-06-06)
 - **AI conclusion rendering restructured:** AI interpretations are now distributed across
