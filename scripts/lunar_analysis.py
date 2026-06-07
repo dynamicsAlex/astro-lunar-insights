@@ -201,8 +201,15 @@ def analyze(birth_date_str, birth_time_str, city, target_date_str=None,
     # Julian dates
     birth_jd = swe.julday(byear, bmonth, bday, bhour + bmin / 60.0)
     if target_date_str:
-        tparts = target_date_str.split('.')
-        target_jd = swe.julday(int(tparts[2]), int(tparts[1]), int(tparts[0]), 12.0)
+        # Support both DD.MM.YYYY and YYYY-MM-DD formats
+        if '.' in target_date_str:
+            tparts = target_date_str.split('.')
+            target_jd = swe.julday(int(tparts[2]), int(tparts[1]), int(tparts[0]), 12.0)
+        elif '-' in target_date_str:
+            tparts = target_date_str.split('-')
+            target_jd = swe.julday(int(tparts[0]), int(tparts[1]), int(tparts[2]), 12.0)
+        else:
+            raise ValueError('target-date format must be DD.MM.YYYY or YYYY-MM-DD')
     else:
         import time
         now = time.gmtime()
@@ -584,11 +591,15 @@ if __name__ == '__main__':
         elif args[i] == '--output' and i + 1 < len(args):
             output_file = args[i + 1]
             i += 2
+        elif args[i] == '--target-date' and i + 1 < len(args):
+            target = args[i + 1]
+            i += 2
         else:
             positional.append(args[i])
             i += 1
 
-    if len(positional) >= 4:
+    # Positional target date (4th arg) still supported for backward compat
+    if target is None and len(positional) >= 4:
         target = positional[3]
 
     analyze(positional[0], positional[1], positional[2], target, name, lang, as_json, conclusion_file, output_file)

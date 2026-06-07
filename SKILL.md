@@ -1,6 +1,6 @@
 ---
 name: astro-lunar-insights
-version: 1.1.0
+version: 1.2.0
 description: Lunar phase analysis and Moon influence on a person using Swiss Ephemeris (pyswisseph). Calculates Moon phases (exact dates), transit Moon aspects to natal Moon (personal lunar cycle), transit Moon through natal houses, personal solar-lunar phase (Moon -> Natal Sun), lunar day number (tithi), Moon speed, illumination, perigee/apogee, and transit Moon aspects to all natal planets. Bilingual (RU/EN). Renders a 2-wheel chart (Moon phase wheel + natal wheel with transit Moon) with 3-group legend and text panel. Windows 10/11 compatible. Accuracy ensured by Swiss Ephemeris (JPL DE431 ephemerides, ~0.003° precision). Requires: Python 3.14.x, Pillow 12.x, MSVC++ Redist 2015–2022. Related: astro-daily-transits skill for daily transit forecast, astro-natal-chart skill for natal chart calculation.
 metadata:
   openclaw:
@@ -167,7 +167,7 @@ python scripts/draw_lunar.py 24.04.1983 07:00 Ижевск --target-date 05.06.2
 | `date` | Birth date DD.MM.YYYY |
 | `time` | Birth time HH:MM |
 | `city` | Birth city |
-| `--target-date` | Analysis date DD.MM.YYYY (default: today) |
+| `--target-date` | Target date in DD.MM.YYYY or YYYY-MM-DD format (default: today). Supports any past, present, or future date. **When omitted, uses current system date.** Supported in both `lunar_analysis.py` and `draw_lunar.py`. |
 | `--lang` | Language: `ru` or `en` (default: `ru`) |
 | `--name` | Person's name for display |
 | `--json` | Output JSON instead of text |
@@ -343,11 +343,18 @@ limits text to keep the chart compact.
 
 ## AI Workflow (for OpenClaw agents)
 
+**⚠️ ПРАВИЛО: ВСЕГДА предоставляй расширенную интерпретацию ИИ, когда это возможно.**
+
+Автономная интерпретация (встроенная в скрипт) — это fallback для CLI-использования. Когда скилл вызывается через OpenClaw агент, агент **обязан** проанализировать JSON и сгенерировать расширенную интерпретацию по всем метрикам. Это ключевое отличие качественного прогноза от шаблонного.
+
 ```
 Step 1: python scripts/lunar_analysis.py <date> <time> <city> --json --target-date <date>
-Step 2: AI analyzes JSON and provides interpretation
-Step 3: python scripts/draw_lunar.py <date> <time> <city> --lang ru --name "Name"
+Step 2: AI analyzes JSON and provides extended interpretation for ALL metrics
+Step 3: AI writes conclusion JSON file with overall summary
+Step 4: python scripts/draw_lunar.py <date> <time> <city> --lang ru --name "Name" --conclusion <file.json>
 ```
+
+**Без шага 3-4 карта будет содержать только автономную (краткую) интерпретацию.**
 
 The AI should focus on:
 - **Personal New/Full Moon** — most significant events
@@ -355,6 +362,8 @@ The AI should focus on:
 - **Transit Moon → Natal Moon aspect** — emotional cycle phase
 - **Moon speed** — depth vs. speed of emotional processing
 - **Lunar day meaning** — Vedic tithi guidance
+- **Transit Moon aspects to all natal planets** — detailed psychological analysis
+- **Overall synthesis** — practical recommendations for the day
 
 ---
 
@@ -396,6 +405,16 @@ This is an entertainment/educational tool, not a scientific method. Do not make 
 - Updated SKILL.md with encoding guide, new CLI args, and updated layout diagram
 
 ### v1.0.0 (2026-06-05)
+
+### v1.2.0 (2026-06-07)
+- **Cosmetic: aspect symbols in text panel** — Section 8 (Aspects) now renders graphical aspect symbols (△ □ ✶ ☌ ☍ ⚹ ⚺ ∠) from `seguisym.ttf` instead of text names (Trine, Square, etc.), matching the legend style
+- **Symbol color coding**: aspect glyphs are rendered in their astrological colors (green △, red □, blue ✶, etc.) via `_get_word_color` + `ASP_SYMBOL_COLORS` map
+- **`draw_lunar.py` now supports `--target-date` flag** — previously only `lunar_analysis.py` supported target dates via positional arg; now both scripts accept `--target-date`
+- **Subprocess propagation**: `draw_lunar.py` passes `--target-date` through to `lunar_analysis.py` subprocess call
+- **`lunar_analysis.py` `--target-date` as explicit flag** — previously only supported as 4th positional argument; now also parsed as `--target-date` flag for consistency
+- **Dual date format support**: both `DD.MM.YYYY` and `YYYY-MM-DD` formats accepted for `--target-date`
+- **AI Conclusion rule added**: SKILL.md now explicitly states that agents MUST always provide extended AI interpretation when possible; autonomous interpretation is a CLI fallback only
+- **Updated AI workflow**: 4-step process (analyze → interpret → write conclusion → render chart) documented with explicit warning about missing conclusion = short output only
 
 ### v1.1.0 (2026-06-06)
 - **Cosmetic overhaul of text panel:** Font sizes now match astro-natal-chart (FS=19, FM=22, FL=26, LH=22)

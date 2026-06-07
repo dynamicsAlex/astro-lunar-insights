@@ -344,12 +344,26 @@ def draw_text_panel(img, dw, x0, y0, w, h, data, lang):
     for _an, _ac in ASP_COLORS.items():
         ASP_COLORS_LOCAL[_an.lower()] = _ac
         ASP_COLORS_LOCAL[_an] = _ac
+    # Aspect symbol -> color map (for rendering aspect glyphs in text)
+    ASP_SYMBOL_COLORS = {
+        '\u260c': (200, 200, 200),  # Conjunction
+        '\u260d': (240, 140, 40),   # Opposition
+        '\u25a1': (220, 80, 80),    # Square
+        '\u25b3': (80, 220, 80),    # Trine
+        '\u2736': (100, 180, 240),  # Sextile
+        '\u26b9': (180, 160, 60),   # Quincunx
+        '\u26ba': (150, 150, 100),  # Semisextile
+        '\u2220': (150, 100, 100),  # Semisquare / Sesquiquadrate
+    }
 
     def _get_word_color(word):
         c = PLANET_COLORS.get(word)
         if c:
             return c
-        return ASP_COLORS_LOCAL.get(word.lower())
+        c = ASP_COLORS_LOCAL.get(word.lower())
+        if c:
+            return c
+        return ASP_SYMBOL_COLORS.get(word)
 
     def _adv(n=1):
         _y[0] += n
@@ -562,13 +576,27 @@ def draw_text_panel(img, dw, x0, y0, w, h, data, lang):
     spacer()
 
     # 8. Aspects
+    # Symbol map: aspect name -> symbol char (rendered via seguisym.ttf)
+    ASP_SYM = {
+        'Conjunction':    '\u260c',
+        'Opposition':     '\u260d',
+        'Square':         '\u25a1',
+        'Trine':          '\u25b3',
+        'Sextile':        '\u2736',
+        'Quincunx':       '\u26b9',
+        'Semisextile':    '\u26ba',
+        'Semisquare':     '\u2220',
+        'Sesquiquadrate': '\u2220',
+    }
     subhead('8. ' + T8)
     for a in data['transit_moon_aspects'][:12]:
         if not check(20):
             break
         marker = '*' if a['major'] else ' '
         retro = ' R' if a['natal_retro'] else ''
-        small('  ' + marker + ' Moon ' + a['aspect'].ljust(15) + ' ' + a['natal'].ljust(8) + ' (orb ' + format(a['orb'], '.1f') + '\u00b0)' + retro)
+        sym = ASP_SYM.get(a['aspect'], '?')
+        line_text = '  ' + marker + ' Moon ' + sym + ' ' + a['natal'].ljust(8) + ' (orb ' + format(a['orb'], '.1f') + '\u00b0)' + retro
+        _draw_colored_line(line_text, FS - 5, (180, 180, 200))
     show_interp('transit_moon_aspects', limit=400)
     spacer()
 
@@ -735,6 +763,7 @@ def main():
     parser.add_argument("--lang", choices=["en", "ru"], default="en")
     parser.add_argument("--name", default="")
     parser.add_argument("--conclusion", default="", help="Path to JSON file with AI conclusion")
+    parser.add_argument("--target-date", default="", help="Target date DD.MM.YYYY (default: today)")
     parser.add_argument("date", nargs="?", default="24.04.1983")
     parser.add_argument("time", nargs="?", default="07:00")
     parser.add_argument("city", nargs="?", default="Ижевск")
@@ -748,6 +777,8 @@ def main():
         analysis_args += ["--name", args.name]
     if args.conclusion:
         analysis_args += ["--conclusion", args.conclusion]
+    if args.target_date:
+        analysis_args += ["--target-date", args.target_date]
 
     # Get JSON data — write to temp file to avoid console encoding issues
     import tempfile
