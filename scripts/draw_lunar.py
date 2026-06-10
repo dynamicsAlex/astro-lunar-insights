@@ -891,7 +891,7 @@ def main():
     parser.add_argument("date", nargs="?", default="24.04.1983")
     parser.add_argument("time", nargs="?", default="07:00")
     parser.add_argument("city", nargs="?", default="РР¶РµРІСЃРє")
-    parser.add_argument("--frame", default="", help="Path to frame image (QR code) to embed after conclusion")
+    parser.add_argument("--frame", default="", help="Path to frame image .png.dat (QR code) to embed after conclusion")
     args = parser.parse_args()
 
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -902,7 +902,7 @@ def main():
         # Resolve path: if relative, look relative to skill directory
         frame_path = args.frame
         if not os.path.isabs(frame_path):
-            frame_path = os.path.join(script_dir, '..', frame_path)
+            frame_path = os.path.join(script_dir, frame_path)
         frame_path = os.path.normpath(frame_path)
         if os.path.exists(frame_path):
             try:
