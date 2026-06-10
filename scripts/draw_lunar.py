@@ -345,7 +345,7 @@ def draw_wheel(img, dw, cx, cy, RO, RS, RH, RP, RI, natal_data, transit_moon_lon
 
 
 # в”Ђв”Ђ Text panel в”Ђв”Ђ
-def draw_text_panel(img, dw, x0, y0, w, h, data, lang):
+def draw_text_panel(img, dw, x0, y0, w, h, data, lang, frame_img=None):
     """Draw the right-side text interpretation panel with colored planet names and aspect types."""
     R = (lang == 'ru')
 
@@ -719,6 +719,20 @@ def draw_text_panel(img, dw, x0, y0, w, h, data, lang):
             url_x = x + (max_w - url_tw) // 2
             dw.text((url_x, _y[0]), clawhub_url, fill=(80, 80, 120), font=tf_url)
 
+        # Frame image (QR code for donations) — placed after conclusion, right-aligned to text block edge
+        if frame_img is not None:
+            _adv(14)
+            frame_w = frame_img.size[0]
+            frame_h = frame_img.size[1]
+            # Right-align to the text block right edge (x + max_w)
+            frame_x = x + max_w - frame_w
+            frame_y = _y[0]
+            if frame_img.mode == 'RGBA':
+                img.paste(frame_img, (frame_x, frame_y), frame_img)
+            else:
+                img.paste(frame_img, (frame_x, frame_y))
+            _y[0] += frame_h + 10
+
 
 
 
@@ -793,7 +807,7 @@ def draw_phase_wheel(img, dw, cx, cy, RO, elongation, illumination, fonts, lang)
 
 
 # в”Ђв”Ђ Main render в”Ђв”Ђ
-def render_chart(data, output_path, lang="en"):
+def render_chart(data, output_path, lang="en", frame_img=None):
     """Render 5760x2880 chart: left = 2 wheels side by side, right = text panel."""
     R = (lang == 'ru')
 
@@ -856,8 +870,8 @@ def render_chart(data, output_path, lang="en"):
                natal_for_draw, transit_moon_lon, transit_moon_speed,
                all_aspects, lang, natal_title, is_moon_wheel=True)
 
-    # в”Ђв”Ђ RIGHT PANEL: Text interpretation в”Ђв”Ђ
-    draw_text_panel(img, dw, LEFT_W, 0, RIGHT_W, TOT_H, data, lang)
+    # RIGHT PANEL: Text interpretation
+    draw_text_panel(img, dw, LEFT_W, 0, RIGHT_W, TOT_H, data, lang, frame_img)
 
     # Divider
     dw.line([(LEFT_W, 0), (LEFT_W, TOT_H)], fill=(80, 80, 120), width=3)
@@ -877,9 +891,27 @@ def main():
     parser.add_argument("date", nargs="?", default="24.04.1983")
     parser.add_argument("time", nargs="?", default="07:00")
     parser.add_argument("city", nargs="?", default="РР¶РµРІСЃРє")
+    parser.add_argument("--frame", default="", help="Path to frame image (QR code) to embed after conclusion")
     args = parser.parse_args()
 
     script_dir = os.path.dirname(os.path.abspath(__file__))
+
+    # Load frame image if provided
+    frame_img = None
+    if args.frame:
+        # Resolve path: if relative, look relative to skill directory
+        frame_path = args.frame
+        if not os.path.isabs(frame_path):
+            frame_path = os.path.join(script_dir, '..', frame_path)
+        frame_path = os.path.normpath(frame_path)
+        if os.path.exists(frame_path):
+            try:
+                frame_img = Image.open(frame_path)
+                print(f"Frame loaded: {frame_img.size} from {frame_path}")
+            except Exception as e:
+                print(f"Warning: could not load frame image: {e}")
+        else:
+            print(f"Warning: frame not found at {frame_path}")
 
     # Build analysis args
     analysis_args = [args.date, args.time, args.city, "--lang", args.lang, "--json"]
@@ -912,7 +944,7 @@ def main():
     output_name = f"lunar_{safe_name}_{target_date.replace('.', '-')}_{args.lang}.png"
     output_path = os.path.join(os.path.expanduser('~'), '.openclaw', 'workspace', output_name)
 
-    render_chart(data, output_path, args.lang)
+    render_chart(data, output_path, args.lang, frame_img)
 
 
 if __name__ == '__main__':
