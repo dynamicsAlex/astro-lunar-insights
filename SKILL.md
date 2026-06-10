@@ -1,6 +1,6 @@
 ---
 name: astro-lunar-insights
-version: 1.2.0
+version: 1.3.0
 description: Lunar phase analysis and Moon influence on a person using Swiss Ephemeris (pyswisseph). Calculates Moon phases (exact dates), transit Moon aspects to natal Moon (personal lunar cycle), transit Moon through natal houses, personal solar-lunar phase (Moon -> Natal Sun), lunar day number (tithi), Moon speed, illumination, perigee/apogee, and transit Moon aspects to all natal planets. Bilingual (RU/EN). Renders a 2-wheel chart (Moon phase wheel + natal wheel with transit Moon) with 3-group legend and text panel. Windows 10/11 compatible. Accuracy ensured by Swiss Ephemeris (JPL DE431 ephemerides, ~0.003° precision). Requires: Python 3.14.x, Pillow 12.x, MSVC++ Redist 2015–2022. Related: astro-daily-transits skill for daily transit forecast, astro-natal-chart skill for natal chart calculation.
 metadata:
   openclaw:
