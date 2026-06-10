@@ -14,7 +14,7 @@ except ImportError:
     subprocess.check_call([sys.executable, "-m", "pip", "install", "pillow", "-q"])
     from PIL import Image, ImageDraw, ImageFont
 
-# ── Font + binary setup ──
+# в”Ђв”Ђ Font + binary setup в”Ђв”Ђ
 # ClawHub doesn't allow .ttf/.pyd files, so we ship them as .dat and copy at runtime
 _SKILL_DIR = os.path.dirname(os.path.abspath(__file__))
 for _f in os.listdir(_SKILL_DIR):
@@ -45,10 +45,23 @@ def fnt(size, sym=False):
     _FC[k] = ImageFont.load_default()
     return _FC[k]
 
-_ASP_CHARS = frozenset(('\u260c', '\u260d', '\u25a1', '\u25b3', '\u2736', '\u26b9', '\u26ba', '\u2220'))
+# Symbols that should be rendered via the symbol font (seguisym.ttf)
+# Zodiac signs, aspect glyphs, degree sign, prime/double-prime, retrograde
+_SYM_SET = frozenset(
+    [chr(c) for c in range(0x2648, 0x2654)]  # zodiac
+    + [chr(c) for c in range(0x2609, 0x2648)]  # planet symbols Sun..Pluto
+    + [chr(c) for c in range(0x25A1, 0x25B4)]  # square/trine range
+    + ['\u2736']  # sextile
+    + [chr(c) for c in range(0x26B9, 0x26BB)]  # quincunx/semisextile
+    + ['\u2220']  # semisquare/sesquiquadrate
+    + ['\u00B0']  # degree
+    + ['\u2032', '\u2033']  # prime, double-prime
+    + ['\u211E']  # retrograde
+)
 
 def is_z(ch):
-    return ('\u2648' <= ch <= '\u2653') or ch in _ASP_CHARS
+    """Return True if character should be rendered via the symbol font."""
+    return ch in _SYM_SET
 
 def ch_w(ch, f):
     bb = f.getbbox(ch)
@@ -76,7 +89,7 @@ def rcent(draw, cx, y, text, size, fill, ox=0):
         draw.text((x, y), ch, fill=fill, font=f)
         x += ch_w(ch, f)
 
-# ── Constants ──
+# в”Ђв”Ђ Constants в”Ђв”Ђ
 ZSYM = ['\u2648', '\u2649', '\u264a', '\u264b', '\u264c', '\u264d',
         '\u264e', '\u264f', '\u2650', '\u2651', '\u2652', '\u2653']
 ZAB = ['AR', 'TA', 'GE', 'CN', 'LE', 'VI', 'LI', 'SC', 'SG', 'CP', 'AQ', 'PI']
@@ -93,19 +106,35 @@ SN_EN = ['Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo',
          'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces']
 
 PM = {
-    "Sun":     ("SU", (255, 220, 50), "Солнце", "Sun"),
-    "Moon":    ("MO", (210, 210, 220), "Луна", "Moon"),
+    "Sun": ("SU", (255, 220, 50), "Солнце", "Sun"),
+    "Moon": ("MO", (210, 210, 220), "Луна", "Moon"),
     "Mercury": ("ME", (100, 210, 100), "Меркурий", "Mercury"),
-    "Venus":   ("VE", (80, 230, 170), "Венера", "Venus"),
-    "Mars":    ("MA", (230, 70, 50), "Марс", "Mars"),
+    "Venus": ("VE", (80, 230, 170), "Венера", "Venus"),
+    "Mars": ("MA", (230, 70, 50), "Марс", "Mars"),
     "Jupiter": ("JU", (210, 150, 60), "Юпитер", "Jupiter"),
-    "Saturn":  ("SA", (150, 150, 170), "Сатурн", "Saturn"),
-    "Uranus":  ("UR", (100, 210, 230), "Уран", "Uranus"),
+    "Saturn": ("SA", (150, 150, 170), "Сатурн", "Saturn"),
+    "Uranus": ("UR", (100, 210, 230), "Уран", "Uranus"),
     "Neptune": ("NE", (90, 140, 230), "Нептун", "Neptune"),
-    "Pluto":   ("PL", (170, 80, 80), "Плутон", "Pluto"),
+    "Pluto": ("PL", (170, 80, 80), "Плутон", "Pluto"),
 }
 
+
 ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII']
+
+# Planet name mapping: English -> Russian
+PN_RU = {
+    "Sun": "Солнце",
+    "Moon": "Луна",
+    "Mercury": "Меркурий",
+    "Venus": "Венера",
+    "Mars": "Марс",
+    "Jupiter": "Юпитер",
+    "Saturn": "Сатурн",
+    "Uranus": "Уран",
+    "Neptune": "Нептун",
+    "Pluto": "Плутон",
+}
+
 
 # Aspect colors matching natal chart style
 ASP_COLORS = {
@@ -120,7 +149,7 @@ ASP_COLORS = {
     'Sesquiquadrate': (150, 100, 100),
 }
 
-# ── Geometry helpers ──
+# в”Ђв”Ђ Geometry helpers в”Ђв”Ђ
 def aof(d):
     return math.radians(90.0 - float(d))
 
@@ -128,7 +157,7 @@ def ppos(cx, cy, r, d):
     a = aof(d)
     return cx + r * math.cos(a), cy - r * math.sin(a)
 
-# ── Draw natal-style wheel ──
+# в”Ђв”Ђ Draw natal-style wheel в”Ђв”Ђ
 def draw_wheel(img, dw, cx, cy, RO, RS, RH, RP, RI, natal_data, transit_moon_lon,
                transit_moon_speed, all_aspects, lang, title, is_moon_wheel=False):
     """Draw a natal-style wheel with planets, houses, aspects, legend."""
@@ -194,7 +223,7 @@ def draw_wheel(img, dw, cx, cy, RO, RS, RH, RP, RI, natal_data, transit_moon_lon
     # Inner circle
     dw.ellipse((cx - RI, cy - RI, cx + RI, cy + RI), outline=(90, 90, 140), width=2)
 
-    # ── Planets ──
+    # в”Ђв”Ђ Planets в”Ђв”Ђ
     pp_main = []
     for pn, pd in natal_data.items():
         if pn in ('houses', 'ASC', 'MC'):
@@ -226,7 +255,7 @@ def draw_wheel(img, dw, cx, cy, RO, RS, RH, RP, RI, natal_data, transit_moon_lon
         nm = nr if R else ne
         rcent(dw, int(px), int(py) - 42, ab + ('(R)' if rt else ''), 17, cl)
 
-    # ── Transit Moon (highlighted, outer orbit) ──
+    # в”Ђв”Ђ Transit Moon (highlighted, outer orbit) в”Ђв”Ђ
     if is_moon_wheel:
         tm_r = RP + 80
         tm_px, tm_py = ppos(cx, cy, tm_r, transit_moon_lon)
@@ -244,11 +273,11 @@ def draw_wheel(img, dw, cx, cy, RO, RS, RH, RP, RI, natal_data, transit_moon_lon
         tm_label = "ТРАНЗИТ" if R else "TRANSIT"
         rcent(dw, int(tm_px), int(tm_py) + 28, tm_label, 15, (255, 255, 220))
 
-    # ── Title above wheel ──
+    # в”Ђв”Ђ Title above wheel в”Ђв”Ђ
     title_y = cy - RO - 80
     rcent(dw, cx, title_y, title, 22, (255, 220, 100))
 
-    # ── Legend below wheel: 3 groups side by side ──
+    # в”Ђв”Ђ Legend below wheel: 3 groups side by side в”Ђв”Ђ
     LEG_TOP = cy + RO + 12
     grp_w = (RO * 2) // 3  # each group gets 1/3 of total width
     SN = SN_RU if R else SN_EN
@@ -257,7 +286,7 @@ def draw_wheel(img, dw, cx, cy, RO, RS, RH, RP, RI, natal_data, transit_moon_lon
     # All groups same height = tallest group (aspects: 6 items + title + padding)
     UNIFORM_H = gh * 7 + 10  # 154px, fits all groups
 
-    # ── Group 1: Planets (vertical list, 2 columns if needed) ──
+    # в”Ђв”Ђ Group 1: Planets (vertical list, 2 columns if needed) в”Ђв”Ђ
     gx = cx - RO
     gy = LEG_TOP
     n_planets = len(pp_main)
@@ -281,7 +310,7 @@ def draw_wheel(img, dw, cx, cy, RO, RS, RH, RP, RI, natal_data, transit_moon_lon
         dw.ellipse((rx, ry, rx + 12, ry + 12), fill=cl, outline=(255, 255, 255), width=1)
         rtext(dw, rx + 16, ry, lbl, 12, cl)
 
-    # ── Group 2: Aspects (vertical list) ──
+    # в”Ђв”Ђ Group 2: Aspects (vertical list) в”Ђв”Ђ
     gx2 = cx - RO + grp_w
     gy2 = LEG_TOP
     dw.rectangle((gx2, gy2, gx2 + grp_w - 4, gy2 + UNIFORM_H),
@@ -301,7 +330,7 @@ def draw_wheel(img, dw, cx, cy, RO, RS, RH, RP, RI, natal_data, transit_moon_lon
         dw.rectangle((gx2 + 6, ry + 1, gx2 + 18, ry + 13), fill=ac)
         rtext(dw, gx2 + 22, ry, f"{al} {albl}", 13, ac)
 
-    # ── Group 3: Elements (vertical list) ──
+    # в”Ђв”Ђ Group 3: Elements (vertical list) в”Ђв”Ђ
     gx3 = cx - RO + grp_w * 2
     gy3 = LEG_TOP
     dw.rectangle((gx3, gy3, gx3 + grp_w - 4, gy3 + UNIFORM_H),
@@ -315,7 +344,7 @@ def draw_wheel(img, dw, cx, cy, RO, RS, RH, RP, RI, natal_data, transit_moon_lon
         rtext(dw, gx3 + 22, ry, enm, 13, (200, 200, 200))
 
 
-# ── Text panel ──
+# в”Ђв”Ђ Text panel в”Ђв”Ђ
 def draw_text_panel(img, dw, x0, y0, w, h, data, lang):
     """Draw the right-side text interpretation panel with colored planet names and aspect types."""
     R = (lang == 'ru')
@@ -332,6 +361,9 @@ def draw_text_panel(img, dw, x0, y0, w, h, data, lang):
     FM = 22  # medium (subheads)
     FL = 26  # large (main header)
     LH = 22  # line height
+
+    # Thin divider color
+    DIVIDER_COL = (50, 50, 80)
 
     # Planet color mapping (Russian/English names -> RGB)
     PLANET_COLORS = {}
@@ -433,7 +465,14 @@ def draw_text_panel(img, dw, x0, y0, w, h, data, lang):
     def check(needed):
         return _y[0] + needed < y0 + h - 20
 
-    # ── Helper: extract interpretation text from conclusion[mkey] ──
+    def metric_divider():
+        """Draw a thin horizontal line across 2/3 of text block width, from left edge."""
+        div_w = int(max_w * 2 / 3)
+        _adv(4)
+        dw.line([(x, _y[0]), (x + div_w, _y[0])], fill=DIVIDER_COL, width=1)
+        _adv(8)
+
+    # в”Ђв”Ђ Helper: extract interpretation text from conclusion[mkey] в”Ђв”Ђ
     conclusion_data = data.get('conclusion', {})
     is_ai = 'overall' in conclusion_data
 
@@ -444,13 +483,29 @@ def draw_text_panel(img, dw, x0, y0, w, h, data, lang):
         if isinstance(val, list):
             # For transit_moon_aspects list: build readable summary
             if mkey == 'transit_moon_aspects' and len(val) > 0 and isinstance(val[0], dict):
+                # Aspect name -> Unicode symbol mapping
+                ASP_TO_SYM = {
+                    'Conjunction': '\u260c', 'Opposition': '\u260d',
+                    'Square': '\u25a1', 'Trine': '\u25b3',
+                    'Sextile': '\u2736', 'Quincunx': '\u26b9',
+                    'Semisextile': '\u26ba', 'Semisquare': '\u2220',
+                    'Sesquiquadrate': '\u2220',
+                }
                 parts = []
                 for a in val:
                     asp = a.get('aspect', '?')
                     nat = a.get('natal', '?')
                     orb = a.get('orb', 0)
                     retro = ' R' if a.get('natal_retro') else ''
-                    parts.append('Moon {asp} {nat} (orb {orb:.1f}\u00b0){retro}'.format(asp=asp, nat=nat, orb=orb, retro=retro))
+                    sym = ASP_TO_SYM.get(asp, asp)
+                    nat_name = PN_RU.get(nat, nat) if R else nat
+                    transit_name = '\u041b\u0443\u043d\u0430' if R else 'Moon'
+                    if R:
+                        parts.append('{transit} {sym} {nat} (\u043e\u0440\u0431 {orb:.1f}\u00b0){retro}'.format(
+                            transit=transit_name, sym=sym, nat=nat_name, orb=orb, retro=retro))
+                    else:
+                        parts.append('Moon {sym} {nat} (orb {orb:.1f}\u00b0){retro}'.format(
+                            sym=sym, nat=nat, orb=orb, retro=retro))
                 return ', '.join(parts)
             return ' '.join(str(x) for x in val)
         if not isinstance(val, dict):
@@ -477,7 +532,7 @@ def draw_text_panel(img, dw, x0, y0, w, h, data, lang):
         else:
             wrapped(txt[:limit] if limit else txt)
 
-    # ── Titles / Labels
+    # в”Ђв”Ђ Titles / Labels
     if R:
         T1 = '\u0424\u0410\u0417\u0410 \u041b\u0423\u041d\u042b'
         T2 = '\u0411\u041b\u0418\u0416\u0410\u0419\u0428\u0418\u0415 \u0424\u0410\u0417\u042b'
@@ -527,7 +582,7 @@ def draw_text_panel(img, dw, x0, y0, w, h, data, lang):
     subhead('1. ' + T1)
     text('{nm} | {el}\u00b0 | {il}%'.format(nm=mp['name'], el=format(mp['elongation'], '.1f'), il=format(mp['illumination'], '.1f')))
     show_interp('moon_phase', limit=400)
-    spacer()
+    metric_divider()
 
     # 2. Nearest phases
     subhead('2. ' + T2)
@@ -536,13 +591,13 @@ def draw_text_panel(img, dw, x0, y0, w, h, data, lang):
         direction = dir_in if dd > 0 else dir_ago
         small(pn + ': ' + pd['date'] + ' (' + format(abs(dd), '.1f') + 'd ' + direction + ')')
     show_interp('nearest_phases', limit=200)
-    spacer()
+    metric_divider()
 
     # 3. Lunar day
     ld = data['lunar_day']
     subhead('3. ' + T3 + ' ' + str(ld['number']) + '/30')
     show_interp('lunar_day', limit=200)
-    spacer()
+    metric_divider()
 
     # 4. Transit Moon -> Natal Moon
     tm = data['transit_moon_to_natal_moon']
@@ -550,30 +605,35 @@ def draw_text_panel(img, dw, x0, y0, w, h, data, lang):
     if tm['aspect']:
         text(tm['aspect'] + ' (orb ' + str(tm['orb']) + '\u00b0)')
     show_interp('transit_moon_to_natal_moon', limit=400)
-    spacer()
+    metric_divider()
 
     # 5. Personal phase
     pp = data['personal_phase']
     subhead('5. ' + T5)
     text(format(pp['elongation'], '.1f') + '\u00b0')
     show_interp('personal_phase', limit=400)
-    spacer()
+    metric_divider()
 
     # 6. Transit Moon house
     mh = data['transit_moon_house']
     subhead('6. ' + T6 + ' ' + str(mh['house']))
     show_interp('transit_moon_house', limit=400)
     if mh['natal_planets_in_house']:
-        pnames = ', '.join([p['name'] for p in mh['natal_planets_in_house']])
-        small(TP + ': ' + pnames)
-    spacer()
+        # Use Russian planet names if lang=ru
+        if R:
+            pnames_ru = ', '.join([PN_RU.get(p['name'], p['name']) for p in mh['natal_planets_in_house']])
+            small(TP + ': ' + pnames_ru)
+        else:
+            pnames = ', '.join([p['name'] for p in mh['natal_planets_in_house']])
+            small(TP + ': ' + pnames)
+    metric_divider()
 
     # 7. Moon speed
     ms = data['moon_speed']
     subhead('7. ' + T7)
     text(format(ms['speed'], '.2f') + '\u00b0/' + TD)
     show_interp('moon_speed', limit=200)
-    spacer()
+    metric_divider()
 
     # 8. Aspects
     # Symbol map: aspect name -> symbol char (rendered via seguisym.ttf)
@@ -593,28 +653,78 @@ def draw_text_panel(img, dw, x0, y0, w, h, data, lang):
         if not check(20):
             break
         marker = '*' if a['major'] else ' '
-        retro = ' R' if a['natal_retro'] else ''
+        retro_s = ' R' if a['natal_retro'] else ''
         sym = ASP_SYM.get(a['aspect'], '?')
-        line_text = '  ' + marker + ' Moon ' + sym + ' ' + a['natal'].ljust(8) + ' (orb ' + format(a['orb'], '.1f') + '\u00b0)' + retro
-        _draw_colored_line(line_text, FS - 5, (180, 180, 200))
+        # Use Russian planet names if lang=ru
+        nat_name = PN_RU.get(a['natal'], a['natal']) if R else a['natal']
+        transit_moon_name = '\u041b\u0443\u043d\u0430' if R else 'Moon'
+        # Build line: marker + transit_moon + aspect_sym + natal_planet + orb
+        orb_text = '(orb ' + format(a['orb'], '.1f') + '\u00b0)' + retro_s
+        aspect_line_text = '  ' + marker + ' ' + transit_moon_name + ' ' + sym + ' ' + nat_name.ljust(10) + ' ' + orb_text
+        _draw_colored_line(aspect_line_text, FS - 5, (180, 180, 200))
     show_interp('transit_moon_aspects', limit=400)
-    spacer()
+    metric_divider()
 
-    # 9. Conclusion — ALWAYS show
+    # 9. Conclusion вЂ” ALWAYS show, styled like natal chart
     if 'conclusion' in data:
-        spacer()
-        subhead('9. ' + T9)
+        spacer(12)
+        # Top decorative line removed (kept conc_line_x for bottom line)
+        conc_line_w = int(max_w * 0.85)
+        conc_line_x = x + (max_w - conc_line_w) // 2
+        _adv(LH + 10)
+        # Title
+        conc_title_color = (255, 215, 0)
+        _wrap_multiline('9. ' + T9, FL, max_w, conc_title_color)
+        _adv(10)
+        # Body text
         conclusion = data['conclusion']
         if conclusion.get('_autonomous'):
             summary = conclusion.get('summary', {})
             wrapped(TE + ': ' + summary.get('cycle_energy', ''))
             wrapped(TI + ': ' + summary.get('intensity', ''))
         elif is_ai:
-            wrapped(conclusion['overall'])
+            # Render AI conclusion with plain text font only (no sym font mixing)
+            tf = fnt(FS - 1, sym=False)
+            ai_text = conclusion['overall']
+            words = ai_text.split()
+            cur = ""
+            for wd in words:
+                if cur:
+                    test_bb = tf.getbbox(cur + " " + wd)
+                    tw = (test_bb[2] - test_bb[0]) if test_bb else 0
+                    if tw <= max_w:
+                        cur = cur + " " + wd
+                        continue
+                    dw.text((x, _y[0]), cur, fill=(240, 230, 200), font=tf)
+                    _adv(LH)
+                    cur = wd
+                else:
+                    cur = wd
+            if cur:
+                dw.text((x, _y[0]), cur, fill=(240, 230, 200), font=tf)
+                _adv(LH)
+        # Bottom decorative line
+        _adv(8)
+        if _y[0] < y0 + h - 40:
+            dw.line([(conc_line_x + 30, _y[0]), (conc_line_x + conc_line_w - 30, _y[0])], fill=(120, 100, 60), width=1)
+            _adv(14)
 
-# ── Draw simple moon phase wheel (original style) ──
+        # ClawHub link
+        if _y[0] < y0 + h - 50:
+            _adv(10)
+            clawhub_url = "https://clawhub.ai/dynamicsalex/astro-lunar-insights"
+            tf_url = fnt(FS - 2, sym=False)
+            url_bb = tf_url.getbbox(clawhub_url)
+            url_tw = (url_bb[2] - url_bb[0]) if url_bb else 0
+            url_x = x + (max_w - url_tw) // 2
+            dw.text((url_x, _y[0]), clawhub_url, fill=(80, 80, 120), font=tf_url)
+
+
+
+
+# в”Ђв”Ђ Draw simple moon phase wheel (original style) в”Ђв”Ђ
 def draw_phase_wheel(img, dw, cx, cy, RO, elongation, illumination, fonts, lang):
-    """Draw the original-style moon phase wheel — simple circle with illuminated portion."""
+    """Draw the original-style moon phase wheel вЂ” simple circle with illuminated portion."""
     R = (lang == 'ru')
 
     # Background circle
@@ -653,8 +763,8 @@ def draw_phase_wheel(img, dw, cx, cy, RO, elongation, illumination, fonts, lang)
     # Phase labels
     label_r = RO + 55
     if R:
-        phase_labels = [(0, "0°", "Новолуние"), (90, "90°", "1-я четв."),
-                        (180, "180°", "Полнолуние"), (270, "270°", "3-я четв.")]
+        phase_labels = [(0, "0°", "Новолуние"), (90, "90°", "1-я четверть"),
+                        (180, "180°", "Полнолуние"), (270, "270°", "3-я четверть")]
     else:
         phase_labels = [(0, "0°", "New Moon"), (90, "90°", "1st Quarter"),
                         (180, "180°", "Full Moon"), (270, "270°", "3rd Quarter")]
@@ -674,15 +784,15 @@ def draw_phase_wheel(img, dw, cx, cy, RO, elongation, illumination, fonts, lang)
     # Center illumination
     rcent(dw, cx, cy, f"{illumination:.0f}%", 32, (255, 255, 220))
 
-    # Title above wheel — raised higher
+    # Title above wheel вЂ” raised higher
     title = "ФАЗА ЛУНЫ" if R else "MOON PHASE"
     rcent(dw, cx, cy - RO - 80, title, 22, (255, 220, 100))
 
-    # No legend for phase wheel — it's self-explanatory
+    # No legend for phase wheel вЂ” it's self-explanatory
     # (phase circle with illumination % in center)
 
 
-# ── Main render ──
+# в”Ђв”Ђ Main render в”Ђв”Ђ
 def render_chart(data, output_path, lang="en"):
     """Render 5760x2880 chart: left = 2 wheels side by side, right = text panel."""
     R = (lang == 'ru')
@@ -707,7 +817,7 @@ def render_chart(data, output_path, lang="en"):
     img = Image.new('RGB', (TOT_W, TOT_H), (8, 8, 20))
     dw = ImageDraw.Draw(img)
 
-    # ── LEFT PANEL: 2 wheels side by side ──
+    # в”Ђв”Ђ LEFT PANEL: 2 wheels side by side в”Ђв”Ђ
     wheel1_cx = WHEEL_SIZE // 2  # phase wheel center
     wheel1_cy = WHEEL_CY
     wheel2_cx = WHEEL_SIZE + WHEEL_SIZE // 2  # natal wheel center
@@ -746,7 +856,7 @@ def render_chart(data, output_path, lang="en"):
                natal_for_draw, transit_moon_lon, transit_moon_speed,
                all_aspects, lang, natal_title, is_moon_wheel=True)
 
-    # ── RIGHT PANEL: Text interpretation ──
+    # в”Ђв”Ђ RIGHT PANEL: Text interpretation в”Ђв”Ђ
     draw_text_panel(img, dw, LEFT_W, 0, RIGHT_W, TOT_H, data, lang)
 
     # Divider
@@ -757,7 +867,7 @@ def render_chart(data, output_path, lang="en"):
     print(f"Saved: {output_path} ({TOT_W}x{TOT_H})")
 
 
-# ── CLI ──
+# в”Ђв”Ђ CLI в”Ђв”Ђ
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--lang", choices=["en", "ru"], default="en")
@@ -766,7 +876,7 @@ def main():
     parser.add_argument("--target-date", default="", help="Target date DD.MM.YYYY (default: today)")
     parser.add_argument("date", nargs="?", default="24.04.1983")
     parser.add_argument("time", nargs="?", default="07:00")
-    parser.add_argument("city", nargs="?", default="Ижевск")
+    parser.add_argument("city", nargs="?", default="РР¶РµРІСЃРє")
     args = parser.parse_args()
 
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -780,7 +890,7 @@ def main():
     if args.target_date:
         analysis_args += ["--target-date", args.target_date]
 
-    # Get JSON data — write to temp file to avoid console encoding issues
+    # Get JSON data вЂ” write to temp file to avoid console encoding issues
     import tempfile
     tmp_json = os.path.join(tempfile.gettempdir(), "lunar_analysis_tmp.json")
     env = os.environ.copy()
@@ -796,7 +906,7 @@ def main():
         data = json.load(_jf)
     os.unlink(tmp_json)
 
-    # Output path — include name and target date
+    # Output path вЂ” include name and target date
     target_date = data.get('target_date', '')
     safe_name = args.name.replace(' ', '_') if args.name else 'lunar'
     output_name = f"lunar_{safe_name}_{target_date.replace('.', '-')}_{args.lang}.png"
